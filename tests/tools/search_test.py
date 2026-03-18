@@ -57,7 +57,7 @@ class TestSearch(unittest.TestCase):
             "SELECT campaign.id,campaign.name FROM campaign "
             "WHERE campaign.status = 'ENABLED' "
             "ORDER BY campaign.name ASC "
-            "LIMIT 10"
+            "LIMIT 10 "
             "PARAMETERS omit_unselected_resource_names=true"
         )
         mock_service.search_stream.assert_called_once_with(
