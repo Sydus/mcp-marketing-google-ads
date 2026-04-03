@@ -27,6 +27,7 @@ from google.ads.googleads.v23.services.services.google_ads_service import (
 from google.ads.googleads.util import get_nested_attr
 import google.auth
 from ads_mcp.mcp_header_interceptor import MCPHeaderInterceptor
+from ads_mcp.identity import get_creds
 import os
 import importlib.resources
 
@@ -61,7 +62,41 @@ def _get_login_customer_id() -> str | None:
     return os.environ.get("GOOGLE_ADS_LOGIN_CUSTOMER_ID")
 
 
+def _get_google_ads_client_from_creds() -> GoogleAdsClient | None:
+    """Crea GoogleAdsClient dalle credenziali del broker identity."""
+    creds = get_creds()
+    google_ads_creds = creds.get("google_ads", {})
+    if not google_ads_creds:
+        return None
+
+    from google.oauth2.credentials import Credentials
+    oauth_creds = Credentials(
+        token=None,
+        refresh_token=google_ads_creds.get("refresh_token"),
+        client_id=google_ads_creds.get("client_id"),
+        client_secret=google_ads_creds.get("client_secret"),
+        token_uri="https://oauth2.googleapis.com/token",
+        scopes=[_READ_ONLY_ADS_SCOPE],
+    )
+
+    args = {
+        "credentials": oauth_creds,
+        "developer_token": google_ads_creds.get("developer_token", ""),
+        "use_proto_plus": True,
+    }
+    login_customer_id = google_ads_creds.get("login_customer_id")
+    if login_customer_id:
+        args["login_customer_id"] = login_customer_id
+
+    return GoogleAdsClient(**args)
+
+
 def _get_googleads_client() -> GoogleAdsClient:
+    # Tenta prima dal broker identity
+    client = _get_google_ads_client_from_creds()
+    if client:
+        return client
+    # Fallback: ADC (per sviluppo locale)
     args = {
         "credentials": _create_credentials(),
         "developer_token": _get_developer_token(),
@@ -74,9 +109,7 @@ def _get_googleads_client() -> GoogleAdsClient:
     if login_customer_id:
         args["login_customer_id"] = login_customer_id
 
-    client = GoogleAdsClient(**args)
-
-    return client
+    return GoogleAdsClient(**args)
 
 
 def get_googleads_service(serviceName: str) -> GoogleAdsServiceClient:

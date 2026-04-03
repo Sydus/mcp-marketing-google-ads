@@ -20,5 +20,9 @@ of the server.
 """
 
 from mcp.server.fastmcp import FastMCP
+from mcp.server.transport_security import TransportSecuritySettings
 
-mcp = FastMCP("Google Ads Server")
+mcp = FastMCP(
+    "Google Ads MCP",
+    transport_security=TransportSecuritySettings(allowed_hosts=["mcp.agent24.it"]),
+)
